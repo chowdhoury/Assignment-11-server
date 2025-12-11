@@ -80,6 +80,12 @@ async function run() {
     });
 
 
+    app.get('/books' async (req, res) => {
+      const result = await booksCollection.find().toArray();
+      res.send(result);
+    });
+
+
 
 
 

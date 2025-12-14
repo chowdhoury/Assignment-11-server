@@ -53,17 +53,40 @@ async function run() {
       res.send({ message: "User created successfully" });
     });
 
-    // app.get("/books", async (req, res) => {
-    //   const booksCollection = database.collection("books");
-    //   const result = await booksCollection.find().toArray();
-    //   res.send(result);
-    // });
+    app.patch('/users/:userId', async (req, res) => {
+      const userId = req.params.userId;
+      const updatedRole = req.body;
+      console.log("Updating user:", userId, "with data:", updatedRole);
+      const filter = { _id: new ObjectId(userId) };
+      const updateDoc = {
+        $set: updatedRole,
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send({ message: "User updated successfully" });
+    });
 
     app.get("/books", async (req, res) => {
       const email = req.query.email;
       console.log("Email:", email);
 
-      const query = {};
+      const query = {
+        visibility: "public"
+      };
+
+      if (email) {
+        query["seller.email"] = email;
+      }
+
+      const result = await booksCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get("/allbooks", async (req, res) => {
+      const email = req.query.email;
+      console.log("Email:", email);
+
+      const query = {
+      };
 
       if (email) {
         query["seller.email"] = email;
@@ -74,10 +97,23 @@ async function run() {
     });
 
 
+
     app.get("/books/:id", async (req, res) => {
       const id = req.params.id;
       const book = await booksCollection.findOne({_id: new ObjectId(id)});
       res.send(book);
+    });
+
+    app.patch('/books/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedBook = req.body;
+      console.log("Updating book:", id, "with data:", updatedBook);
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: updatedBook,
+      };
+      const result = await booksCollection.updateOne(filter, updateDoc);
+      res.send({ message: "Book updated successfully" });
     });
 
 
@@ -89,25 +125,37 @@ async function run() {
     });
 
     app.get("/wishlist", async (req, res) => {
-      const params=req.params;
-      console.log(params);
-      return;
+      const query = {};
+      const userEmail = req.query.userEmail;
+      if (userEmail) {
+        query.userEmail = userEmail;
+      }
+      if (req.query.bookId) {
+        query.bookId = req.query.bookId;
+      }
+      console.log("Wishlist Query:", query);
+      if(Object.keys(query).length > 0){
+        const result = await wishlistCollection.findOne(query);
+        console.log("Wishlist Result:", result);
+        return res.send(result);
+      }
       const result = await wishlistCollection.find().toArray();
       res.send(result);
     });
 
     app.post("/wishlist", async (req, res) => {
       const wishItem = req.body;
+      // console.log("New Wish Item", wishItem);
+      // return;
       const result = await wishlistCollection.insertOne(wishItem);
       res.send({ message: "Wish item added successfully" });
     });
 
-
     app.delete('/wishlist', async (req, res) => {
-      const params=req.params;
-      console.log(params);
-      return;
-      const result = await wishlistCollection.deleteOne({ _id: params.id });
+      const id = req.query.bookId;
+      const userEmail = req.query.userEmail;
+      console.log("Delete Wish Item Book ID:", id, "User Email:", userEmail);
+      const result = await wishlistCollection.deleteOne({ bookId: id, userEmail: userEmail });
       res.send({ message: "Wish item deleted successfully" });
     });
 

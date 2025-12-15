@@ -308,7 +308,7 @@ async function run() {
       }
       const result = await paymentsCollection.find(query).sort({paymentTime: -1}).toArray();
       res.send(result);
-    });
+    }); 
 
 
 

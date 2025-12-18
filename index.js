@@ -16,26 +16,26 @@ admin.initializeApp({
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
+    origin: ["http://localhost:5173", "https://assignment-11-bfd3b.web.app"],
     credentials: true,
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
 app.use(express.json());
 
 const verifyAccessToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
-    // console.log("No authorization header");
     return res.status(401).send({ message: "Unauthorized access" });
   }
   const token = authHeader.split(" ")[1];
   if (!token) {
-    // console.log("No token found");
     return res.status(401).send({ message: "Unauthorized access" });
   }
   try {
     const userInfo = await admin.auth().verifyIdToken(token);
-    // console.log("Decoded Token:", userInfo);
     req.user_Email = userInfo.email;
     next();
   } catch (error) {
@@ -65,7 +65,6 @@ async function run() {
     const paymentsCollection = database.collection("payments");
 
     app.get("/users", verifyAccessToken, async (req, res) => {
-      // console.log("Authorized request from:", req.user_Email);
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
@@ -79,10 +78,8 @@ async function run() {
 
     app.post("/users", async (req, res) => {
       const user = req.body;
-      // console.log("New User", user);
       const isExisting = await usersCollection.findOne({ email: user.email });
       if (isExisting) {
-        // console.log("User already exists");
         return res.send({ message: "User already exists" });
       }
       const result = await usersCollection.insertOne(user);
@@ -95,11 +92,9 @@ async function run() {
         email: req.user_Email,
       });
       if (requester.role !== "admin") {
-        // console.log("Forbidden: Only admins can update user roles");
         return res.status(403).send({ message: "Forbidden: Admins only" });
       }
       const updatedRole = req.body;
-      // console.log("Updating user:", userId, "with data:", updatedRole);
       const filter = { _id: new ObjectId(userId) };
       const updateDoc = {
         $set: updatedRole,
@@ -116,7 +111,6 @@ async function run() {
 
     app.get("/books", async (req, res) => {
       const email = req.query.email;
-      // console.log("Email:", email);
 
       const query = {
         visibility: "public",
@@ -132,33 +126,26 @@ async function run() {
 
     app.get("/allbooks", verifyAccessToken, async (req, res) => {
       const email = req.query.email;
-      // console.log("get Email:", email);
       const requester = await usersCollection.findOne({
         email: req.user_Email,
       });
-      // Allow admins to access all books, librarians can only access their own
       if (
         requester.role !== "admin" &&
         (requester.role !== "librarian" || requester.email !== email)
       ) {
         return res.status(403).send([]);
       }
-
       const query = {};
-
       if (email) {
         query["seller.email"] = email;
       }
-
       const result = await booksCollection.find(query).toArray();
       res.send(result);
     });
 
     app.get("/allbooks/:id", verifyAccessToken, async (req, res) => {
       const id = req.params.id;
-      // console.log(req.headers.authorization);
       const book = await booksCollection.findOne({ _id: new ObjectId(id) });
-      // console.log("Book:", book);
       res.send(book);
     });
 
@@ -176,7 +163,6 @@ async function run() {
       ) {
         return res.status(403).send([]);
       }
-      // console.log("Updating book:", id, "with data:", updatedBook);
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: updatedBook,
@@ -191,10 +177,8 @@ async function run() {
         email: req.user_Email,
       });
       if (requester.role !== "librarian") {
-        // console.log("Forbidden: Only librarians can add books");
         return res.status(403).send({ message: "Forbidden: Librarians only" });
       }
-      // console.log("New Book", book);
       const result = await booksCollection.insertOne(book);
       res.send({ message: "Book added successfully" });
     });
@@ -205,7 +189,6 @@ async function run() {
         email: req.user_Email,
       });
       if (requester.role !== "admin") {
-        // console.log("Forbidden: Only admins can update user roles");
         return res.status(403).send({ message: "Forbidden: Admins only" });
       }
       await wishlistCollection.deleteMany({ bookId: id });
@@ -225,42 +208,28 @@ async function run() {
     app.get("/wishlist", verifyAccessToken, async (req, res) => {
       const query = {};
       const userEmail = req.query.userEmail;
-
-      // Users can only access their own wishlist
       if (userEmail !== req.user_Email) {
         return res.status(403).send({ message: "Forbidden: Access denied" });
       }
-
       if (userEmail) {
         query.userEmail = userEmail;
       }
       if (req.query.bookId) {
         query.bookId = req.query.bookId;
       }
-      // console.log("Wishlist Query:", query);
-
-      // If checking for specific item (with bookId)
       if (req.query.bookId) {
         const result = await wishlistCollection.findOne(query);
-        // console.log("Wishlist Result:", result);
         return res.send(result || null);
       }
-
-      // Otherwise return all wishlist items for the user
       const result = await wishlistCollection.find(query).toArray();
       res.send(result);
     });
 
     app.post("/wishlist", verifyAccessToken, async (req, res) => {
       const wishItem = req.body;
-
-      // Users can only add to their own wishlist
       if (wishItem.userEmail !== req.user_Email) {
         return res.status(403).send({ message: "Forbidden: Access denied" });
       }
-
-      // console.log("New Wish Item", wishItem);
-      // return;
       const result = await wishlistCollection.insertOne(wishItem);
       res.send({ message: "Wish item added successfully" });
     });
@@ -268,13 +237,9 @@ async function run() {
     app.delete("/wishlist", verifyAccessToken, async (req, res) => {
       const id = req.query.bookId;
       const userEmail = req.query.userEmail;
-
-      // Users can only delete from their own wishlist
       if (userEmail !== req.user_Email) {
         return res.status(403).send({ message: "Forbidden: Access denied" });
       }
-
-      // console.log("Delete Wish Item Book ID:", id, "User Email:", userEmail);
       const result = await wishlistCollection.deleteOne({
         bookId: id,
         userEmail: userEmail,
@@ -288,11 +253,6 @@ async function run() {
       const requester = await usersCollection.findOne({
         email: req.user_Email,
       });
-
-      // console.log("Seller Email:", sellerEmail);
-      // console.log("Orders Email:", email);
-
-      // Admins can see all orders
       if (requester.role === "admin") {
         const query = {};
         if (email) {
@@ -308,7 +268,6 @@ async function run() {
         return res.send(result);
       }
 
-      // Users can only see their own orders (as buyer or seller)
       if (email && email !== req.user_Email && sellerEmail !== req.user_Email) {
         return res.status(403).send({ message: "Forbidden: Access denied" });
       }
@@ -329,13 +288,9 @@ async function run() {
 
     app.post("/orders", verifyAccessToken, async (req, res) => {
       const order = req.body;
-
-      // Users can only create orders for themselves
       if (order.buyer.email !== req.user_Email) {
         return res.status(403).send({ message: "Forbidden: Access denied" });
       }
-
-      // console.log("New Order", order);
       const result = await ordersCollection.insertOne(order);
       res.send({ message: "Order placed successfully" });
     });
@@ -369,20 +324,14 @@ async function run() {
       const result = await ordersCollection.updateOne(filter, updateDoc);
       res.send({ message: "Order updated successfully" });
     });
-
-    // Payments
     app.post(
       "/create-checkout-session",
       verifyAccessToken,
       async (req, res) => {
         const paymentInfo = req.body;
-
-        // Users can only create checkout sessions for themselves
         if (paymentInfo.buyer.email !== req.user_Email) {
           return res.status(403).send({ message: "Forbidden: Access denied" });
         }
-
-        // console.log("Payment Info:", paymentInfo);
         const session = await stripe.checkout.sessions.create({
           line_items: [
             {
@@ -416,7 +365,6 @@ async function run() {
       const { sessionId } = req.body;
 
       const session = await stripe.checkout.sessions.retrieve(sessionId);
-      // console.log("Stripe Session:", session);
       if (session.status === "complete") {
         const orderId = session.metadata.orderId;
         const filter = { orderId: orderId };
@@ -459,8 +407,6 @@ async function run() {
       const requester = await usersCollection.findOne({
         email: req.user_Email,
       });
-
-      // Admins can see all invoices
       if (requester.role === "admin") {
         const query = {};
         if (buyerEmail) {
@@ -472,8 +418,6 @@ async function run() {
           .toArray();
         return res.send(result);
       }
-
-      // Users can only see their own invoices
       if (buyerEmail !== req.user_Email) {
         return res.status(403).send({ message: "Forbidden: Access denied" });
       }

@@ -9,7 +9,6 @@ const PORT = process.env.PORT || 3000;
 const uri = process.env.MONGODB_URI;
 
 const serviceAccount = require("./service-account.json");
-const e = require("express");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -109,6 +108,12 @@ async function run() {
       res.send({ message: "User updated successfully" });
     });
 
+
+
+
+
+
+
     app.get("/books", async (req, res) => {
       const email = req.query.email;
       // console.log("Email:", email);
@@ -207,6 +212,15 @@ async function run() {
       const result = await booksCollection.deleteOne({ _id: new ObjectId(id) });
       res.send({ message: "Book deleted successfully" });
     });
+
+
+
+
+
+
+
+
+
 
     app.get("/wishlist", verifyAccessToken, async (req, res) => {
       const query = {};
@@ -479,12 +493,6 @@ async function run() {
 }
 run().catch(console.dir);
 
-// For local development
-if (process.env.NODE_ENV !== "production") {
-  app.listen(PORT, () => {
-    console.log(`Server is running at http://localhost:${PORT}`);
-  });
-}
-
-// Export for Vercel serverless
-module.exports = app;
+app.listen(PORT, () => {
+  console.log(`Server is running at http://localhost:${PORT}`);
+});
